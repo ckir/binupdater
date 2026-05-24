@@ -1,0 +1,25 @@
+[settings.default_install]
+windows = "C:\\!PORTABLES\\!BIN"
+linux = "~/.bin"
+
+[tools.fd]
+repo = "sharkdp/fd"
+version_args = [
+    "--version",
+]
+version_regex = "(\\d+\\.\\d+\\.\\d+(?:[.\\-][a-zA-Z0-9]+)*)"
+installed_version = "10.4.2"
+
+[tools.fd.platforms.windows]
+asset_pattern = "fd-*-x86_64-pc-windows-msvc.zip"
+files_in_archive = [
+    "fd-*-x86_64-pc-windows-msvc/fd.exe",
+]
+install_path = "C:\\!PORTABLES\\!BIN\\fd.EXE"
+
+[tools.fd.platforms.linux]
+asset_pattern = "fd-*-x86_64-unknown-linux-musl.tar.gz"
+files_in_archive = [
+    "fd-*-x86_64-unknown-linux-musl/fd",
+]
+install_path = "~/.bin/fd"
