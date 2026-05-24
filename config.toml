@@ -23,3 +23,25 @@ files_in_archive = [
     "fd-*-x86_64-unknown-linux-musl/fd",
 ]
 install_path = "~/.bin/fd"
+
+[tools.rip]
+repo = "MilesCranmer/rip2"
+version_args = [
+    "--version",
+]
+version_regex = "(\\d+\\.\\d+\\.\\d+(?:[.\\-][a-zA-Z0-9]+)*)"
+installed_version = "0.9.6"
+
+[tools.rip.platforms.windows]
+asset_pattern = "rip-Windows-x86_64.zip"
+files_in_archive = [
+    "rip.exe",
+]
+install_path = "C:\\!PORTABLES\\!BIN\\rip.EXE"
+
+[tools.rip.platforms.linux]
+asset_pattern = "rip-Linux-x86_64-musl.tar.gz"
+files_in_archive = [
+    "rip",
+]
+install_path = "~/.bin/rip"

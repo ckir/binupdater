@@ -516,10 +516,6 @@ def cmd_add(args):
         default_install = config.get("settings", {}).get("default_install", {})
         win_dir = default_install.get("windows", "C:\\!PORTABLES\\!BIN")
         linux_dir = default_install.get("linux", "~/.bin").rstrip("/")
-        _install_defaults = {
-            "windows": str(Path(win_dir) / f"{tool_name}.exe"),
-            "linux": f"{linux_dir}/{tool_name}",
-        }
 
         for platform, asset in selected_assets.items():
             print(f"\n--- {platform} ---")
@@ -547,6 +543,8 @@ def cmd_add(args):
                     "files_in_archive": file_patterns,
                 }
                 if platform == current_platform:
+                    if not args.name:
+                        tool_name = Path(chosen_files[0]).stem
                     member = find_in_archive(archive_path, file_patterns[0])
                     if member:
                         candidate = tmp / "extracted_binary"
@@ -561,6 +559,10 @@ def cmd_add(args):
                     extracted_bin = archive_path
 
             print()
+            install_defaults = {
+                "windows": str(Path(win_dir) / f"{tool_name}.exe"),
+                "linux": f"{linux_dir}/{tool_name}",
+            }
             if platform == current_platform:
                 found = shutil.which(tool_name)
                 if found:
@@ -570,12 +572,12 @@ def cmd_add(args):
                     print(f"'{tool_name}' not found in PATH.")
                     install_path = _prompt(
                         "Installation path",
-                        _install_defaults.get(platform, f"/usr/local/bin/{tool_name}"),
+                        install_defaults.get(platform, f"/usr/local/bin/{tool_name}"),
                     )
             else:
                 install_path = _prompt(
                     f"Default install path for {platform}",
-                    _install_defaults.get(platform, f"/usr/local/bin/{tool_name}"),
+                    install_defaults.get(platform, f"/usr/local/bin/{tool_name}"),
                 )
             platforms_config[platform]["install_path"] = install_path
 
