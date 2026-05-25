@@ -39,6 +39,14 @@ jobs:
           python3 -m pip install -r mongo/poetry_requirements.txt
           cd mongo && python3 -m poetry install --no-root
 
+      - name: Set up SCons
+        run: |
+          python3 -m pip install "scons==4.9.1"
+          SCONS_LOCAL=mongo/src/third_party/scons-4.9.1/scons-local-4.9.1
+          mkdir -p $SCONS_LOCAL
+          SCONS_PKG=$(python3 -c "import SCons, os; print(os.path.dirname(SCons.__file__))")
+          ln -sf $SCONS_PKG $SCONS_LOCAL/SCons
+
       - name: Build MongoDB
         run: |
           cd mongo
