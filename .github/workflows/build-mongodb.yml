@@ -6,7 +6,7 @@ on:
       mongodb_version:
         description: 'MongoDB Version (e.g., r7.0.5)'
         required: true
-        default: 'r7.0.5'
+        default: 'r8.0.23'
 
 jobs:
   build:
@@ -36,17 +36,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libcurl4-openssl-dev libssl-dev liblzma-dev python3-pip lld clang
-          python3 -m pip install jsonschema
-          python3 -m pip install -r mongo/etc/pip/compile-requirements.txt
+          python3 -m pip install -r mongo/poetry_requirements.txt
+          cd mongo && python3 -m poetry install --no-root
 
       - name: Build MongoDB
         run: |
           cd mongo
-          # -sandybridge removes AVX requirements
-          # --disable-warnings-as-errors prevents build failure on minor warnings
-          # install-mongod builds the main server binary
-          # --linker=lld uses the faster/modern linker installed above
-          python3 buildscripts/scons.py install-mongod \
+          python3 -m poetry run buildscripts/scons.py install-mongod \
             --experimental-optimization="-sandybridge" \
             --linker=lld \
             --disable-warnings-as-errors \
