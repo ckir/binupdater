@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       mongodb_version:
-        description: 'MongoDB Version (e.g., r8.0.15)'
+        description: 'MongoDB Version (e.g., r8.0.23)'
         required: true
-        default: 'r8.0.15'
+        default: 'r8.0.23'
 
 jobs:
   build:
@@ -32,32 +32,140 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
+      - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libcurl4-openssl-dev libssl-dev liblzma-dev python3-pip lld
-          python3 -m pip install -r mongo/poetry_requirements.txt
-          cd mongo && python3 -m poetry install --no-root
+          sudo apt-get install -y libcurl4-openssl-dev libssl-dev liblzma-dev lld
 
-      - name: Set up SCons
+      - name: Install bazelisk
         run: |
-          python3 -m pip install "scons==4.9.1"
-          SCONS_LOCAL=mongo/src/third_party/scons-4.9.1/scons-local-4.9.1
-          mkdir -p $SCONS_LOCAL
-          SCONS_PKG=$(python3 -c "import SCons, os; print(os.path.dirname(SCons.__file__))")
-          ln -sf $SCONS_PKG $SCONS_LOCAL/SCons
+          curl -fsSL https://github.com/bazelbuild/bazelisk/releases/latest/download/bazelisk-linux-amd64 \
+            -o /tmp/bazel
+          sudo mv /tmp/bazel /usr/local/bin/bazel
+          sudo chmod +x /usr/local/bin/bazel
+
+      - name: Generate enterprise stubs
+        run: |
+          python3 - <<'PYEOF'
+          import os, collections
+          refs = [
+            ("src/mongo/db/modules/enterprise", "enterprise_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/docs", "docs_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/docs/fle", "fle_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/docs/testing", "testing_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src", "src_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/audit", "audit_commands_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/audit", "audit_config_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/audit", "audit_decryptor_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/audit", "audit_event_type_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/audit", "audit_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/audit", "audit_header_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/audit", "audit_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/audit/logger", "logger_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/audit/mongo", "mongo_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/audit/ocsf", "ocsf_audit_events_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/audit/ocsf", "ocsf_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/encryptdb", "decrypt_tool_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/encryptdb", "encryptdb_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/encryptdb", "encryption_key_manager_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/encryptdb", "encryption_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/encryptdb", "keystore_metadata_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/encryptdb", "log_redact_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/fcbis", "fcbis_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/fips", "fips_flag_client_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/fips", "fips_flag_server_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/fips", "fips_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/fle", "fle_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/fle/commands", "commands_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/fle/lib", "lib_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/fle/query_analysis", "query_analysis_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/fle/shell", "shell_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/hot_backups", "backup_cursor_parameters_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/hot_backups", "document_source_backup_file_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/hot_backups", "hot_backups_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/inmemory", "inmemory_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/inmemory", "inmemory_global_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/kerberos", "kerberos_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/kerberos", "kerberos_tool_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/kmip", "kmip_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/kmip", "kmip_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/ldap", "ldap_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/ldap", "ldap_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/ldap", "ldap_options_mongod_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/ldap", "ldap_parameters_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/ldap", "ldap_runtime_parameters_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/ldap", "ldap_tool_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/ldap", "ldap_user_cache_poller_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/ldap/connections", "connections_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/ldap/name_mapping", "name_mapping_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/live_import", "collection_properties_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/live_import", "live_import_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/live_import/commands", "commands_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/live_import/commands", "export_collection_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/live_import/commands", "import_collection_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/live_import/commands", "vote_commit_import_collection_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/magic_restore", "magic_restore_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/magic_restore", "magic_restore_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/magic_restore", "magic_restore_structs_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/queryable", "queryable_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/queryable/blockstore", "blockstore_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/queryable/queryable_wt", "queryable_global_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/queryable/queryable_wt", "queryable_wt_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/sasl", "auth_delay_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/sasl", "oidc_commands_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/sasl", "oidc_parameters_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/sasl", "sasl_aws_server_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/sasl", "sasl_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/scripts", "scripts_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/serverless", "mongoqd_options_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/serverless", "serverless_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/streams", "streams_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/streams/commands", "commands_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/streams/commands", "stream_ops_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/streams/exec", "checkpoint_data_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/streams/exec", "common_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/streams/exec", "config_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/streams/exec", "exec_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/streams/exec", "exec_internal_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/streams/exec", "stages_idl_gen"),
+            ("src/mongo/db/modules/enterprise/src/streams/exec/checkpoint", "checkpoint_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/streams/exec/tests", "tests_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/streams/management", "management_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/streams/management/tests", "tests_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/streams/tools", "tools_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/streams/util", "util_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/streams/util/tests", "tests_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/util", "util_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/workloads", "workloads_global_hdrs"),
+            ("src/mongo/db/modules/enterprise/src/workloads/streams", "streams_global_hdrs"),
+          ]
+          targets_by_pkg = collections.defaultdict(list)
+          for pkg, tgt in refs:
+              targets_by_pkg[pkg].append(tgt)
+          for pkg, targets in targets_by_pkg.items():
+              build_path = os.path.join("mongo", pkg, "BUILD.bazel")
+              os.makedirs(os.path.dirname(build_path), exist_ok=True)
+              with open(build_path, "w") as f:
+                  f.write('package(default_visibility = ["//visibility:public"])\n\n')
+                  for tgt in targets:
+                      f.write(f'cc_library(name = "{tgt}")\n')
+          print("Created stubs for", len(targets_by_pkg), "enterprise packages")
+          PYEOF
 
       - name: Build MongoDB
         run: |
           cd mongo
-          python3 -m poetry run python3 buildscripts/scons.py install-mongod \
-            --experimental-optimization="-sandybridge" \
+          bazel build //src/mongo/db:mongod \
+            --config=local \
+            --config=opt \
+            --build_enterprise=False \
             --linker=lld \
-            --disable-warnings-as-errors \
-            -j$(nproc)
+            --disable_warnings_as_errors=True \
+            --copt=-march=sandybridge \
+            --jobs=$(nproc)
 
       - name: Upload mongod binary
         uses: actions/upload-artifact@v7
         with:
           name: mongod-no-avx-${{ github.event.inputs.mongodb_version }}
-          path: mongo/build/install/bin/mongod
+          path: mongo/bazel-bin/src/mongo/db/mongod
