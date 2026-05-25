@@ -154,6 +154,7 @@ jobs:
 
       - name: Build MongoDB
         run: |
+          VERSION=$(echo "${{ github.event.inputs.mongodb_version }}" | sed 's/^r//')
           cd mongo
           bazel build //src/mongo/db:mongod \
             --config=local \
@@ -163,6 +164,8 @@ jobs:
             --linker=lld \
             --disable_warnings_as_errors=True \
             --copt=-march=sandybridge \
+            --define=MONGO_VERSION=$VERSION \
+            --define=MONGO_GIT_HASH=unknown \
             --jobs=$(nproc)
 
       - name: Upload mongod binary
