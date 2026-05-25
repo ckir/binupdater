@@ -42,7 +42,7 @@ jobs:
       - name: Build MongoDB
         run: |
           cd mongo
-          python3 -m poetry run buildscripts/scons.py install-mongod \
+          python3 -m poetry run python3 buildscripts/scons.py install-mongod \
             --experimental-optimization="-sandybridge" \
             --linker=lld \
             --disable-warnings-as-errors \
