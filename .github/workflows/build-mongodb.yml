@@ -54,7 +54,7 @@ jobs:
             --linker=lld \
             --disable_warnings_as_errors=True \
             --copt=-march=sandybridge \
-            -j$(nproc)
+            --jobs=$(nproc)
 
       - name: Upload mongod binary
         uses: actions/upload-artifact@v7
