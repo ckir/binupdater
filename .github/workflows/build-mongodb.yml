@@ -158,6 +158,7 @@ jobs:
           bazel build //src/mongo/db:mongod \
             --config=local \
             --config=opt \
+            --noenable_platform_specific_config \
             --build_enterprise=False \
             --linker=lld \
             --disable_warnings_as_errors=True \
