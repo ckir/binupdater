@@ -164,9 +164,14 @@ jobs:
             --linker=lld \
             --disable_warnings_as_errors=True \
             --copt=-march=sandybridge \
+            --copt=-g0 \
+            --strip=always \
             --define=MONGO_VERSION=$VERSION \
             --define=MONGO_GIT_HASH=unknown \
             --jobs=$(nproc)
+
+      - name: Strip binary
+        run: strip mongo/bazel-bin/src/mongo/db/mongod
 
       - name: Upload mongod binary
         uses: actions/upload-artifact@v7
