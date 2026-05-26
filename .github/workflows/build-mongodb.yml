@@ -27,7 +27,7 @@ jobs:
           repository: mongodb/mongo
           ref: ${{ github.event.inputs.mongodb_version }}
           path: mongo
-            token: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GH_PAT }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
