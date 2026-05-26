@@ -1,6 +1,8 @@
 name: Build MongoDB (No AVX)
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       mongodb_version:
@@ -154,7 +156,7 @@ jobs:
 
       - name: Build MongoDB
         run: |
-          VERSION=$(echo "${{ github.event.inputs.mongodb_version }}" | sed 's/^r//')
+          VERSION=$(echo "${{ github.event.inputs.mongodb_version || 'r8.0.23' }}" | sed 's/^r//')
           cd mongo
           bazel build //src/mongo/db:mongod \
             --config=local \
@@ -176,5 +178,5 @@ jobs:
       - name: Upload mongod binary
         uses: actions/upload-artifact@v7
         with:
-          name: mongod-no-avx-${{ github.event.inputs.mongodb_version }}
+          name: mongod-no-avx-${{ github.event.inputs.mongodb_version || 'r8.0.23' }}
           path: mongo/bazel-bin/src/mongo/db/mongod
