@@ -185,9 +185,6 @@ jobs:
             --repository_cache=$HOME/.cache/bazel-repo \
             --jobs=$(nproc)
 
-      - name: Strip binary
-        run: strip mongo/bazel-bin/src/mongo/db/mongod
-
       - name: Upload mongod binary
         uses: actions/upload-artifact@v7
         with:
