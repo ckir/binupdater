@@ -165,7 +165,7 @@ jobs:
             --build_enterprise=False \
             --linker=lld \
             --disable_warnings_as_errors=True \
-            --copt=-march=sandybridge \
+            --copt=-march=core2 \
             --copt=-g0 \
             --strip=always \
             --define=MONGO_VERSION=$VERSION \
