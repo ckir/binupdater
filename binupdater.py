@@ -339,6 +339,7 @@ def update_tool(
 
         if is_archive(archive_path):
             file_patterns = platform_cfg.get("files_in_archive") or []
+            binary_names = platform_cfg.get("binary_names") or []
             if not file_patterns:
                 legacy = platform_cfg.get("binary_in_archive")
                 file_patterns = [legacy] if legacy else []
@@ -346,12 +347,14 @@ def update_tool(
                 return UpdateResult(tool_name, "error", error="No files configured for extraction")
 
             extracted_files: list[Path] = []
-            for pattern in file_patterns:
+            for i, pattern in enumerate(file_patterns):
                 member = find_in_archive(archive_path, pattern)
                 if not member:
                     return UpdateResult(tool_name, "error",
                                         error=f"No file matching '{pattern}' in archive")
-                dest = tmp / Path(member).name
+                
+                dest_name = binary_names[i] if i < len(binary_names) else Path(member).name
+                dest = tmp / dest_name
                 try:
                     extract_file(archive_path, member, dest)
                     extracted_files.append(dest)
@@ -534,28 +537,45 @@ def cmd_add(args):
                 print("Archive contents:")
                 indices = _choose_multi(f"Select files to extract for {tool_name}", contents)
                 chosen_files = [contents[i] for i in indices]
+                
+                binary_names = []
+                for i, f in enumerate(chosen_files):
+                    archive_name = Path(f).name
+                    prompt_label = "Install as name" if i == 0 else f"Install '{archive_name}' as"
+                    new_name = _prompt(prompt_label, archive_name)
+                    binary_names.append(new_name)
+
                 file_patterns = [_make_pattern(f, tag) for f in chosen_files]
                 print(f"  Main binary: {file_patterns[0]}")
                 for extra in file_patterns[1:]:
                     print(f"  Extra file:  {extra}")
+                
                 platforms_config[platform] = {
                     "asset_pattern": asset_pattern,
                     "files_in_archive": file_patterns,
+                    "binary_names": binary_names,
                 }
                 if platform == current_platform:
                     if not args.name:
-                        tool_name = Path(chosen_files[0]).stem
+                        tool_name = Path(binary_names[0]).stem
                     member = find_in_archive(archive_path, file_patterns[0])
                     if member:
-                        candidate = tmp / "extracted_binary"
+                        candidate = tmp / binary_names[0]
                         try:
                             extract_file(archive_path, member, candidate)
                             extracted_bin = candidate
                         except Exception:
                             pass
             else:
-                platforms_config[platform] = {"asset_pattern": asset_pattern}
+                archive_name = asset["name"]
+                new_name = _prompt("Install as name", archive_name)
+                platforms_config[platform] = {
+                    "asset_pattern": asset_pattern,
+                    "binary_names": [new_name],
+                }
                 if platform == current_platform:
+                    if not args.name:
+                        tool_name = Path(new_name).stem
                     extracted_bin = archive_path
 
             print()
