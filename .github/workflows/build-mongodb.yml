@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       mongodb_version:
-        description: 'MongoDB Version (e.g., r8.0.23)'
+        description: 'MongoDB Version (e.g., hr8.0.23)'
         default: 'r8.0.23'
 
 jobs:
@@ -27,6 +27,7 @@ jobs:
           repository: mongodb/mongo
           ref: ${{ github.event.inputs.mongodb_version }}
           path: mongo
+            token: ${{ secrets.GH_PAT }}
 
       - name: Set up Python
         uses: actions/setup-python@v6
