@@ -88,6 +88,14 @@ def _headers(token: str | None = None) -> dict:
     return hdrs
 
 
+def get_repo_description(repo: str, token: str | None = None) -> str | None:
+    url = f"{GITHUB_API}/repos/{repo}"
+    r = requests.get(url, headers=_headers(token), timeout=30)
+    if r.status_code == 200:
+        return r.json().get("description")
+    return None
+
+
 def get_latest_release(repo: str, token: str | None = None) -> dict:
     url = f"{GITHUB_API}/repos/{repo}/releases/latest"
     r = requests.get(url, headers=_headers(token), timeout=30)
@@ -473,6 +481,9 @@ def cmd_add(args):
 
     token = config.get("settings", {}).get("github_token") or os.environ.get("GITHUB_TOKEN")
 
+    print(f"Fetching repository details for {repo}...")
+    description = get_repo_description(repo, token)
+
     print(f"Fetching latest release for {repo}...")
     try:
         release = get_latest_release(repo, token)
@@ -481,7 +492,10 @@ def cmd_add(args):
         sys.exit(1)
 
     tag = release["tag_name"]
-    print(f"Latest release: {release.get('name') or tag}  ({tag})\n")
+    print(f"Latest release: {release.get('name') or tag}  ({tag})")
+    if description:
+        print(f"About: {description}")
+    print()
 
     assets = [
         a for a in release["assets"]
@@ -511,7 +525,7 @@ def cmd_add(args):
         print(f"  -> {assets[other_idx]['name']}\n")
 
     platforms_config: dict[str, dict] = {}
-    extracted_bin: Path | None = None
+    current_extracted: list[Path] = []
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
@@ -531,6 +545,7 @@ def cmd_add(args):
                 sys.exit(1)
 
             asset_pattern = _make_pattern(asset["name"], tag)
+            binary_names = []
 
             if is_archive(archive_path):
                 contents = list_archive(archive_path)
@@ -538,7 +553,6 @@ def cmd_add(args):
                 indices = _choose_multi(f"Select files to extract for {tool_name}", contents)
                 chosen_files = [contents[i] for i in indices]
                 
-                binary_names = []
                 for i, f in enumerate(chosen_files):
                     archive_name = Path(f).name
                     prompt_label = "Install as name" if i == 0 else f"Install '{archive_name}' as"
@@ -558,25 +572,27 @@ def cmd_add(args):
                 if platform == current_platform:
                     if not args.name:
                         tool_name = Path(binary_names[0]).stem
-                    member = find_in_archive(archive_path, file_patterns[0])
-                    if member:
-                        candidate = tmp / binary_names[0]
-                        try:
-                            extract_file(archive_path, member, candidate)
-                            extracted_bin = candidate
-                        except Exception:
-                            pass
+                    for i, pattern in enumerate(file_patterns):
+                        member = find_in_archive(archive_path, pattern)
+                        if member:
+                            dest = tmp / binary_names[i]
+                            try:
+                                extract_file(archive_path, member, dest)
+                                current_extracted.append(dest)
+                            except Exception:
+                                pass
             else:
                 archive_name = asset["name"]
                 new_name = _prompt("Install as name", archive_name)
+                binary_names = [new_name]
                 platforms_config[platform] = {
                     "asset_pattern": asset_pattern,
-                    "binary_names": [new_name],
+                    "binary_names": binary_names,
                 }
                 if platform == current_platform:
                     if not args.name:
                         tool_name = Path(new_name).stem
-                    extracted_bin = archive_path
+                    current_extracted.append(archive_path)
 
             print()
             install_defaults = {
@@ -584,12 +600,12 @@ def cmd_add(args):
                 "linux": f"{linux_dir}/{tool_name}",
             }
             if platform == current_platform:
-                found = shutil.which(tool_name)
+                found = shutil.which(binary_names[0])
                 if found:
-                    print(f"Found existing '{tool_name}': {found}")
+                    print(f"Found existing '{binary_names[0]}': {found}")
                     install_path = _prompt("Installation path", found)
                 else:
-                    print(f"'{tool_name}' not found in PATH.")
+                    print(f"'{binary_names[0]}' not found in PATH.")
                     install_path = _prompt(
                         "Installation path",
                         install_defaults.get(platform, f"/usr/local/bin/{tool_name}"),
@@ -600,17 +616,52 @@ def cmd_add(args):
                     install_defaults.get(platform, f"/usr/local/bin/{tool_name}"),
                 )
             platforms_config[platform]["install_path"] = install_path
+            
+            # Additional binaries
+            if platform == current_platform:
+                all_install_paths = [install_path]
+                install_dir = Path(install_path).parent
+                for extra_name in binary_names[1:]:
+                    found_extra = shutil.which(extra_name)
+                    if found_extra:
+                        print(f"Found existing '{extra_name}': {found_extra}")
+                        extra_path = _prompt(f"Installation path for '{extra_name}'", found_extra)
+                    else:
+                        extra_path = _prompt(f"Installation path for '{extra_name}'", str(install_dir / extra_name))
+                    all_install_paths.append(extra_path)
+                current_install_paths = all_install_paths
+            else:
+                # For non-current platforms, we just use the same directory as the main binary
+                pass
 
-        current_install_path = platforms_config[current_platform]["install_path"]
+        if current_extracted:
+            main_dest = Path(current_install_paths[0])
+            print(f"\nTarget installation for '{tool_name}':")
+            for i, p in enumerate(current_install_paths):
+                print(f"  {binary_names[i]:<20} -> {p}")
 
-        if not Path(current_install_path).exists() and extracted_bin and extracted_bin.exists():
-            ans = input(f"\n'{current_install_path}' does not exist. Install now? [Y/n]: ").strip().lower()
-            if ans != "n":
+            # Check which files are missing
+            missing = [p for p in current_install_paths if not Path(p).exists()]
+            
+            if missing:
+                print(f"\nSome files are missing from their target locations: {', '.join(Path(p).name for p in missing)}")
+                ans = input(f"Install all {len(current_extracted)} files now? [Y/n]: ").strip().lower()
+            else:
+                ans = input(f"\nAll files already exist. Reinstall/Overwrite all {len(current_extracted)} files? [y/N]: ").strip().lower()
+                if not ans: ans = "n" # Default to no if already exists
+
+            if (missing and ans != "n") or (not missing and ans == "y"):
                 try:
-                    replace_binary(extracted_bin, Path(current_install_path))
-                    print(f"Installed to {current_install_path}")
+                    for i, src in enumerate(current_extracted):
+                        dest = Path(current_install_paths[i])
+                        replace_binary(src, dest)
+                    print(f"Installed to {main_dest.parent}")
                 except PermissionError:
                     print("Permission denied. You may need elevated privileges.")
+                except Exception as e:
+                    print(f"Error during installation: {e}")
+
+        current_install_path = current_install_paths[0]
 
         print("\nDetecting installed version...")
         version_args: list[str] | None = None
@@ -622,8 +673,8 @@ def cmd_add(args):
             if version_cmd:
                 version_args = version_cmd[1:]
 
-        if not detected_version and extracted_bin and extracted_bin.exists():
-            version_cmd, version_regex, detected_version = detect_version(str(extracted_bin))
+        if not detected_version and current_extracted:
+            version_cmd, version_regex, detected_version = detect_version(str(current_extracted[0]))
             if version_cmd:
                 version_args = version_cmd[1:]
 
@@ -647,6 +698,7 @@ def cmd_add(args):
 
     tool_config = {
         "repo": repo,
+        "description": description or "",
         "version_args": version_args or ["--version"],
         "version_regex": version_regex or DEFAULT_VERSION_REGEX,
         "installed_version": installed_version,
@@ -730,16 +782,32 @@ def cmd_list(args):
         print("No tools tracked.")
         return
     current_platform = get_platform()
-    col = [20, 35, 12]
-    print(f"{'Tool':<{col[0]}} {'Repo':<{col[1]}} {'Version':<{col[2]}} Install path ({current_platform})")
-    print("-" * (sum(col) + 60))
+    col = [15, 25, 12, 40]
+    print(f"{'Tool':<{col[0]}} {'Repo':<{col[1]}} {'Version':<{col[2]}} {'Description':<{col[3]}} Install path ({current_platform})")
+    print("-" * (sum(col) + 40))
     for name, cfg in tools.items():
         platform_cfg = cfg.get("platforms", {}).get(current_platform, {})
+        desc = cfg.get("description", "")
+        if len(desc) > col[3] - 3:
+            desc = desc[:col[3] - 3] + "..."
+        
+        install_path = platform_cfg.get("install_path", "?")
+        binary_names = platform_cfg.get("binary_names", [])
+        
+        # If there are multiple binaries, show them
+        path_str = install_path
+        if len(binary_names) > 1:
+            install_dir = Path(install_path).parent
+            # The first one is already in install_path, others follow
+            paths = [install_path] + [str(install_dir / n) for n in binary_names[1:]]
+            path_str = ", ".join(paths)
+
         print(
             f"{name:<{col[0]}} "
             f"{cfg.get('repo', '?'):<{col[1]}} "
             f"{cfg.get('installed_version', '?'):<{col[2]}} "
-            f"{platform_cfg.get('install_path', '?')}"
+            f"{desc:<{col[3]}} "
+            f"{path_str}"
         )
 
 

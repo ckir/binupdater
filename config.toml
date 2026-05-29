@@ -4,6 +4,7 @@ linux = "~/.bin"
 
 [tools.fd]
 repo = "sharkdp/fd"
+description = "A simple, fast and user-friendly alternative to 'find'"
 version_args = [
     "--version",
 ]
@@ -26,6 +27,7 @@ install_path = "~/.bin/fd"
 
 [tools.rip]
 repo = "MilesCranmer/rip2"
+description = "A safe and ergonomic alternative to rm"
 version_args = [
     "--version",
 ]
@@ -45,3 +47,26 @@ files_in_archive = [
     "rip",
 ]
 install_path = "~/.bin/rip"
+
+[tools.pmux]
+repo = "psmux/psmux"
+description = "Tmux on Windows Powershell - tmux for PowerShell, Windows Terminal, cmd.exe. Includes psmux, pmux, and tmux commands. This is native Powershell Tmux designed for Windows in Rust 🦀"
+version_args = [
+    "--version",
+]
+version_regex = "(\\d+\\.\\d+\\.\\d+(?:[.\\-][a-zA-Z0-9]+)*)"
+installed_version = "3.3.5"
+
+[tools.pmux.platforms.windows]
+asset_pattern = "psmux-*-windows-x64.zip"
+files_in_archive = [
+    "pmux.exe",
+    "psmux.exe",
+    "tmux.exe",
+]
+binary_names = [
+    "pmux.exe",
+    "psmux.exe",
+    "tmux.exe",
+]
+install_path = "C:\\!PORTABLES\\!BIN\\pmux.exe"
