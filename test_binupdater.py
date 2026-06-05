@@ -52,6 +52,8 @@ class TestChooseMulti(unittest.TestCase):
         self.assertEqual(result, [0, 1])
 
     @patch('builtins.input')
+    @patch('cli.config.save_config')
+    @patch('cli.config.load_config')
     @patch('updater.replace_binary')
     @patch('cli.shutil.which')
     @patch('cli._prompt')
@@ -62,8 +64,10 @@ class TestChooseMulti(unittest.TestCase):
     @patch('cli.archive.find_in_archive')
     @patch('cli.archive.extract_file')
     @patch('sys.stdout', new_callable=unittest.mock.MagicMock)
-    def test_add_resilient_install(self, mock_stdout, mock_extract, mock_find, mock_list, mock_is_arch, mock_download, mock_release, mock_prompt, mock_which, mock_replace, mock_input):
+    def test_add_resilient_install(self, mock_stdout, mock_extract, mock_find, mock_list, mock_is_arch, mock_download, mock_release, mock_prompt, mock_which, mock_replace, mock_load_config, mock_save_config, mock_input):
         import cli
+        
+        mock_load_config.return_value = {}
         
         # Setup mocks for adding a tool with 2 files where 1 fails
         inputs = ["1", "n", "1, 2", "y"]
