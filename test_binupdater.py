@@ -51,5 +51,51 @@ class TestChooseMulti(unittest.TestCase):
         result = _choose_multi("Select files", options)
         self.assertEqual(result, [0, 1])
 
+    @patch('builtins.input')
+    @patch('updater.replace_binary')
+    @patch('cli.shutil.which')
+    @patch('cli._prompt')
+    @patch('cli.github_api.get_latest_release')
+    @patch('cli.github_api.download_file')
+    @patch('cli.archive.is_archive')
+    @patch('cli.archive.list_archive')
+    @patch('cli.archive.find_in_archive')
+    @patch('cli.archive.extract_file')
+    @patch('sys.stdout', new_callable=unittest.mock.MagicMock)
+    def test_add_resilient_install(self, mock_stdout, mock_extract, mock_find, mock_list, mock_is_arch, mock_download, mock_release, mock_prompt, mock_which, mock_replace, mock_input):
+        import cli
+        
+        # Setup mocks for adding a tool with 2 files where 1 fails
+        inputs = ["1", "n", "1, 2", "y"]
+        mock_input.side_effect = inputs
+        mock_prompt.side_effect = ["name1", "name2", "C:\\test\\path\\name1", "C:\\test\\path\\name2", "--version", "(.*)"]
+        mock_release.return_value = {"tag_name": "v1.0.0", "description": "test", "assets": [{"name": "test.zip", "browser_download_url": "url"}]}
+        mock_is_arch.return_value = True
+        mock_list.return_value = ["bin1", "bin2"]
+        mock_find.side_effect = ["bin1", "bin2"]
+        mock_which.return_value = None
+        
+        # Make the first replace fail, second succeed
+        def side_effect(src, dest):
+            if "name1" in str(dest):
+                raise PermissionError("Permission denied")
+            return None
+        mock_replace.side_effect = side_effect
+        
+        # Prepare args
+        class Args:
+            url = "https://github.com/test/test"
+            name = None
+            force = True
+        
+        cli.cmd_add(Args())
+        
+        # Verify both paths were attempted and the summary is printed
+        self.assertEqual(mock_replace.call_count, 2)
+        # Verify the stdout printout includes the summary
+        stdout_calls = [call[0][0] for call in mock_stdout.write.call_args_list if call[0]]
+        full_stdout = "".join(stdout_calls)
+        self.assertIn("Summary of Failed Extractions/Installations", full_stdout)
+
 if __name__ == '__main__':
     unittest.main()
