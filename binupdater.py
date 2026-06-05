@@ -414,19 +414,48 @@ def _choose_multi(prompt: str, options: list[str]) -> list[int]:
     print(f"  {prompt}")
     print("  Enter numbers separated by spaces — first selection is the main binary.")
     while True:
-        raw = input("  > ").strip().replace(",", " ")
+        raw = input("  > ").strip()
+        # Clean/normalize spaces around hyphens
+        raw = re.sub(r'\s*-\s*', '-', raw)
+        # Replace commas with spaces
+        raw = raw.replace(",", " ")
         parts = raw.split()
         indices: list[int] = []
         ok = True
+        
         for p in parts:
-            if p.isdigit() and 1 <= int(p) <= len(options):
-                idx = int(p) - 1
-                if idx not in indices:
-                    indices.append(idx)
+            m = re.match(r'^(\d+)-(\d+)$', p)
+            if m:
+                start = int(m.group(1))
+                end = int(m.group(2))
+                if 1 <= start <= len(options) and 1 <= end <= len(options):
+                    if start <= end:
+                        vals = list(range(start, end + 1))
+                    else:
+                        vals = list(range(start, end - 1, -1))
+                    for v in vals:
+                        idx = v - 1
+                        if idx not in indices:
+                            indices.append(idx)
+                else:
+                    print(f"  Invalid: '{p}'. Enter numbers between 1 and {len(options)}.")
+                    ok = False
+                    break
+            elif p.isdigit():
+                val = int(p)
+                if 1 <= val <= len(options):
+                    idx = val - 1
+                    if idx not in indices:
+                        indices.append(idx)
+                else:
+                    print(f"  Invalid: '{p}'. Enter numbers between 1 and {len(options)}.")
+                    ok = False
+                    break
             else:
                 print(f"  Invalid: '{p}'. Enter numbers between 1 and {len(options)}.")
                 ok = False
                 break
+                
         if ok and indices:
             return indices
         if ok:
