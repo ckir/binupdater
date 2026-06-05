@@ -304,15 +304,26 @@ def cmd_add(args):
                 if not ans: ans = "n"
 
             if (missing and ans != "n") or (not missing and ans == "y"):
-                try:
-                    for i, src in enumerate(current_extracted):
-                        dest = Path(current_install_paths[i])
+                succeeded = []
+                failed = []
+                for i, src in enumerate(current_extracted):
+                    dest = Path(current_install_paths[i])
+                    try:
                         updater.replace_binary(src, dest)
-                    print(f"Installed to {main_dest.parent}")
-                except PermissionError:
-                    print("Permission denied. You may need elevated privileges.")
-                except Exception as e:
-                    print(f"Error during installation: {e}")
+                        succeeded.append((src.name, dest))
+                    except PermissionError:
+                        print(f"  Error: Permission denied writing to {dest.name}.")
+                        failed.append((dest, "Permission denied. You may need elevated privileges."))
+                    except Exception as e:
+                        print(f"  Error: Failed to replace {dest.name}: {e}")
+                        failed.append((dest, str(e)))
+
+                if succeeded:
+                    print(f"Installed {len(succeeded)} file(s) to {main_dest.parent}")
+                if failed:
+                    print("\n[!] Summary of Failed Extractions/Installations:")
+                    for dest, err in failed:
+                        print(f"  - {dest}: {err}")
 
         current_install_path = current_install_paths[0]
 
