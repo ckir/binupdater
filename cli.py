@@ -438,6 +438,13 @@ def cmd_update(args):
         parts.append(f"{n} error(s)")
     print(f"\nDone: {', '.join(parts) or 'nothing to do'}")
 
+    failed_updates = [r for r in results if r.status == "error"]
+    if failed_updates:
+        print("\n--- Summary of Failed Updates ---")
+        for r in failed_updates:
+            print(f"  Tool: {r.tool}")
+            print(f"    Error: {r.error}")
+
 
 def cmd_list(args):
     cfg_data = config.load_config()
