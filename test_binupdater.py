@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch
-from binupdater import _choose_multi
+from cli import _choose_multi
 
 class TestChooseMulti(unittest.TestCase):
     @patch('builtins.input')
