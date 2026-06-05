@@ -201,15 +201,27 @@ def update_tool(
             extracted, extra_files = archive_path, []
 
         install_dir = binary_path.parent
-        try:
-            replace_binary(extracted, binary_path)
-            for extra in extra_files:
-                replace_binary(extra, install_dir / extra.name)
-        except PermissionError:
-            return UpdateResult(tool_name, "error",
-                                error=f"Permission denied writing to {install_dir}. "
-                                      f"Try running with elevated privileges (sudo on Linux).")
-        except Exception as e:
-            return UpdateResult(tool_name, "error", error=f"Failed to replace binary: {e}")
+        binaries_to_install = [(extracted, binary_path)]
+        for extra in extra_files:
+            binaries_to_install.append((extra, install_dir / extra.name))
+
+        failed_binaries = []
+        for src, dest in binaries_to_install:
+            try:
+                replace_binary(src, dest)
+            except PermissionError:
+                failed_binaries.append((dest.name, "Permission denied. You may need elevated privileges."))
+            except Exception as e:
+                failed_binaries.append((dest.name, str(e)))
+
+        if failed_binaries:
+            err_msg = "; ".join(f"{name} ({err})" for name, err in failed_binaries)
+            return UpdateResult(
+                tool_name,
+                "error",
+                old_version=installed,
+                new_version=latest_ver,
+                error=f"Some binaries failed to replace: {err_msg}"
+            )
 
     return UpdateResult(tool_name, "updated", old_version=installed, new_version=latest_ver)
