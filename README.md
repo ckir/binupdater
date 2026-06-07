@@ -9,7 +9,29 @@ Keep GitHub-released binaries up to date across Windows and Linux/WSL.
 
 ## Setup
 
-### Windows
+### Using pipx (Recommended)
+
+To install `binupdater` globally in an isolated environment, you can install it directly from GitHub:
+
+```bash
+pipx install git+https://github.com/ckir/binupdater.git
+```
+
+Alternatively, to install from a local clone of the repository:
+
+```bash
+# Navigate to the project directory
+cd /path/to/binupdater
+
+# Install locally using pipx
+pipx install .
+```
+
+This will automatically handle dependencies and make the `binupdater` command available system-wide.
+
+### Manual Virtual Environment Setup
+
+#### Windows
 
 ```powershell
 cd C:\path\to\binupdater
@@ -20,7 +42,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### Linux / WSL
+#### Linux / WSL
 
 ```bash
 cd /path/to/binupdater   # or /mnt/c/... from WSL

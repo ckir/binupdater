@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "binupdater"
+version = "0.1.0"
+description = "Keep GitHub-released binaries up to date."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.28",
+    "packaging>=23",
+    "tomli-w>=1.0",
+]
+
+[project.scripts]
+binupdater = "binupdater:main"
+
+[tool.setuptools]
+py-modules = ["archive", "binupdater", "cli", "config", "github_api", "updater"]
