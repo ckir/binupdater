@@ -1,7 +1,7 @@
 import os
-import sys
 import re
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
@@ -19,7 +19,11 @@ def _prompt(label: str, default: str | None = None) -> str:
 
 def _choose(prompt: str, options: list[str], hint_substr: str | None = None) -> int:
     for i, opt in enumerate(options, 1):
-        tag = "  <-- detected" if hint_substr and hint_substr.lower() in opt.lower() else ""
+        tag = (
+            "  <-- detected"
+            if hint_substr and hint_substr.lower() in opt.lower()
+            else ""
+        )
         print(f"  {i:3}. {opt}{tag}")
     while True:
         raw = input(f"{prompt} (1-{len(options)}): ").strip()
@@ -32,24 +36,30 @@ def _choose_multi(prompt: str, options: list[str]) -> list[int]:
     for i, opt in enumerate(options, 1):
         print(f"  {i:3}. {opt}")
     print(f"  {prompt}")
-    print("  Enter numbers or ranges (e.g. 1-5,7,18-20) — first selection is the main binary.")
+    print(
+        "  Enter numbers or ranges (e.g. 1-5,7,18-20) — first selection is the main binary."
+    )
     while True:
         raw = input("  > ").strip()
-        
+
         # Normalize: remove spaces around hyphens (e.g. "1 - 5" -> "1-5")
-        raw = re.sub(r'\s*-\s*', '-', raw)
-        
+        raw = re.sub(r"\s*-\s*", "-", raw)
+
         # Split by commas or spaces
-        parts = re.split(r'[,\s]+', raw)
+        parts = re.split(r"[,\s]+", raw)
         parts = [p for p in parts if p]  # filter out empty elements
-        
+
         indices: list[int] = []
         ok = True
-        
+
         for p in parts:
             if "-" in p:
                 subparts = p.split("-")
-                if len(subparts) == 2 and subparts[0].isdigit() and subparts[1].isdigit():
+                if (
+                    len(subparts) == 2
+                    and subparts[0].isdigit()
+                    and subparts[1].isdigit()
+                ):
                     start, end = int(subparts[0]), int(subparts[1])
                     if 1 <= start <= len(options) and 1 <= end <= len(options):
                         # Support ranges both ascending and descending
@@ -59,7 +69,9 @@ def _choose_multi(prompt: str, options: list[str]) -> list[int]:
                             if idx not in indices:
                                 indices.append(idx)
                     else:
-                        print(f"  Invalid range: '{p}'. Enter numbers between 1 and {len(options)}.")
+                        print(
+                            f"  Invalid range: '{p}'. Enter numbers between 1 and {len(options)}."
+                        )
                         ok = False
                         break
                 else:
@@ -73,14 +85,16 @@ def _choose_multi(prompt: str, options: list[str]) -> list[int]:
                     if idx not in indices:
                         indices.append(idx)
                 else:
-                    print(f"  Invalid: '{p}'. Enter numbers between 1 and {len(options)}.")
+                    print(
+                        f"  Invalid: '{p}'. Enter numbers between 1 and {len(options)}."
+                    )
                     ok = False
                     break
             else:
                 print(f"  Invalid format: '{p}'. Enter numbers or ranges like 1-5.")
                 ok = False
                 break
-                
+
         if ok and indices:
             return indices
         if ok:
@@ -130,10 +144,14 @@ def cmd_add(args):
     cfg_data = config.load_config()
 
     if tool_name in cfg_data.get("tools", {}) and not getattr(args, "force", False):
-        print(f"'{tool_name}' is already tracked. Use 'update {tool_name}' to update it, or --force to reconfigure.")
+        print(
+            f"'{tool_name}' is already tracked. Use 'update {tool_name}' to update it, or --force to reconfigure."
+        )
         sys.exit(1)
 
-    token = cfg_data.get("settings", {}).get("github_token") or os.environ.get("GITHUB_TOKEN")
+    token = cfg_data.get("settings", {}).get("github_token") or os.environ.get(
+        "GITHUB_TOKEN"
+    )
 
     print(f"Fetching repository details for {repo}...")
     description = github_api.get_repo_description(repo, token)
@@ -152,8 +170,12 @@ def cmd_add(args):
     print()
 
     assets = [
-        a for a in release["assets"]
-        if not any(a["name"].endswith(s) for s in (".sha256", ".sha512", ".md5", ".asc", ".sig"))
+        a
+        for a in release["assets"]
+        if not any(
+            a["name"].endswith(s)
+            for s in (".sha256", ".sha512", ".md5", ".asc", ".sig")
+        )
     ]
     if not assets:
         print("No downloadable assets found in this release.")
@@ -174,7 +196,9 @@ def cmd_add(args):
     other_platform = "linux" if current_platform == "windows" else "windows"
     if input(f"Configure {other_platform} asset too? [y/N]: ").strip().lower() == "y":
         print(f"\nAvailable assets (for {other_platform}):")
-        other_idx = _choose(f"Select asset for {other_platform}", asset_names, other_platform)
+        other_idx = _choose(
+            f"Select asset for {other_platform}", asset_names, other_platform
+        )
         selected_assets[other_platform] = assets[other_idx]
         print(f"  -> {assets[other_idx]['name']}\n")
 
@@ -193,7 +217,9 @@ def cmd_add(args):
             print(f"Downloading {asset['name']}...")
             archive_path = tmp / asset["name"]
             try:
-                github_api.download_file(asset["browser_download_url"], archive_path, token)
+                github_api.download_file(
+                    asset["browser_download_url"], archive_path, token
+                )
             except Exception as e:
                 print(f"Error downloading: {e}")
                 sys.exit(1)
@@ -204,12 +230,16 @@ def cmd_add(args):
             if archive.is_archive(archive_path):
                 contents = archive.list_archive(archive_path)
                 print("Archive contents:")
-                indices = _choose_multi(f"Select files to extract for {tool_name}", contents)
+                indices = _choose_multi(
+                    f"Select files to extract for {tool_name}", contents
+                )
                 chosen_files = [contents[i] for i in indices]
-                
+
                 for i, f in enumerate(chosen_files):
                     archive_name = Path(f).name
-                    prompt_label = "Install as name" if i == 0 else f"Install '{archive_name}' as"
+                    prompt_label = (
+                        "Install as name" if i == 0 else f"Install '{archive_name}' as"
+                    )
                     new_name = _prompt(prompt_label, archive_name)
                     binary_names.append(new_name)
 
@@ -217,7 +247,7 @@ def cmd_add(args):
                 print(f"  Main binary: {file_patterns[0]}")
                 for extra in file_patterns[1:]:
                     print(f"  Extra file:  {extra}")
-                
+
                 platforms_config[platform] = {
                     "asset_pattern": asset_pattern,
                     "files_in_archive": file_patterns,
@@ -270,7 +300,7 @@ def cmd_add(args):
                     install_defaults.get(platform, f"/usr/local/bin/{tool_name}"),
                 )
             platforms_config[platform]["install_path"] = install_path
-            
+
             # Additional binaries
             if platform == current_platform:
                 all_install_paths = [install_path]
@@ -279,9 +309,14 @@ def cmd_add(args):
                     found_extra = shutil.which(extra_name)
                     if found_extra:
                         print(f"Found existing '{extra_name}': {found_extra}")
-                        extra_path = _prompt(f"Installation path for '{extra_name}'", found_extra)
+                        extra_path = _prompt(
+                            f"Installation path for '{extra_name}'", found_extra
+                        )
                     else:
-                        extra_path = _prompt(f"Installation path for '{extra_name}'", str(install_dir / extra_name))
+                        extra_path = _prompt(
+                            f"Installation path for '{extra_name}'",
+                            str(install_dir / extra_name),
+                        )
                     all_install_paths.append(extra_path)
                 current_install_paths = all_install_paths
             else:
@@ -295,13 +330,26 @@ def cmd_add(args):
 
             # Check which files are missing
             missing = [p for p in current_install_paths if not Path(p).exists()]
-            
+
             if missing:
-                print(f"\nSome files are missing from their target locations: {', '.join(Path(p).name for p in missing)}")
-                ans = input(f"Install all {len(current_extracted)} files now? [Y/n]: ").strip().lower()
+                print(
+                    f"\nSome files are missing from their target locations: {', '.join(Path(p).name for p in missing)}"
+                )
+                ans = (
+                    input(f"Install all {len(current_extracted)} files now? [Y/n]: ")
+                    .strip()
+                    .lower()
+                )
             else:
-                ans = input(f"\nAll files already exist. Reinstall/Overwrite all {len(current_extracted)} files? [y/N]: ").strip().lower()
-                if not ans: ans = "n"
+                ans = (
+                    input(
+                        f"\nAll files already exist. Reinstall/Overwrite all {len(current_extracted)} files? [y/N]: "
+                    )
+                    .strip()
+                    .lower()
+                )
+                if not ans:
+                    ans = "n"
 
             if (missing and ans != "n") or (not missing and ans == "y"):
                 succeeded = []
@@ -313,7 +361,12 @@ def cmd_add(args):
                         succeeded.append((src.name, dest))
                     except PermissionError:
                         print(f"  Error: Permission denied writing to {dest.name}.")
-                        failed.append((dest, "Permission denied. You may need elevated privileges."))
+                        failed.append(
+                            (
+                                dest,
+                                "Permission denied. You may need elevated privileges.",
+                            )
+                        )
                     except Exception as e:
                         print(f"  Error: Failed to replace {dest.name}: {e}")
                         failed.append((dest, str(e)))
@@ -333,23 +386,31 @@ def cmd_add(args):
         detected_version: str | None = None
 
         if Path(current_install_path).exists():
-            version_cmd, version_regex, detected_version = updater.detect_version(current_install_path)
+            version_cmd, version_regex, detected_version = updater.detect_version(
+                current_install_path
+            )
             if version_cmd:
                 version_args = version_cmd[1:]
 
         if not detected_version and current_extracted:
-            version_cmd, version_regex, detected_version = updater.detect_version(str(current_extracted[0]))
+            version_cmd, version_regex, detected_version = updater.detect_version(
+                str(current_extracted[0])
+            )
             if version_cmd:
                 version_args = version_cmd[1:]
 
         if detected_version:
             flags = " ".join(version_args or [])
-            print(f"Detected version: {detected_version}  (via '{current_install_path} {flags}')")
+            print(
+                f"Detected version: {detected_version}  (via '{current_install_path} {flags}')"
+            )
         else:
             print("Could not auto-detect version.")
             flags_str = _prompt("Version flags", "--version")
             version_args = flags_str.split()
-            version_regex = _prompt("Regex (group 1 = version)", config.DEFAULT_VERSION_REGEX)
+            version_regex = _prompt(
+                "Regex (group 1 = version)", config.DEFAULT_VERSION_REGEX
+            )
             output = updater.run_version_cmd([current_install_path] + version_args)
             detected_version = updater.extract_version(output, version_regex)
             if detected_version:
@@ -394,7 +455,9 @@ def cmd_update(args):
         print(f"Unknown tools: {', '.join(unknown)}")
         sys.exit(1)
 
-    token = cfg_data.get("settings", {}).get("github_token") or os.environ.get("GITHUB_TOKEN")
+    token = cfg_data.get("settings", {}).get("github_token") or os.environ.get(
+        "GITHUB_TOKEN"
+    )
     check_only = getattr(args, "check", False)
     current_platform = config.get_platform()
     config_dirty = False
@@ -409,7 +472,11 @@ def cmd_update(args):
             if _resolve_install_path(name, platform_cfg):
                 config_dirty = True
 
-        result = updater.check_tool(name, tool_cfg, token) if check_only else updater.update_tool(name, tool_cfg, token)
+        result = (
+            updater.check_tool(name, tool_cfg, token)
+            if check_only
+            else updater.update_tool(name, tool_cfg, token)
+        )
         results.append(result)
 
         if result.status == "updated":
@@ -454,17 +521,19 @@ def cmd_list(args):
         return
     current_platform = config.get_platform()
     col = [15, 25, 12, 40]
-    print(f"{'Tool':<{col[0]}} {'Repo':<{col[1]}} {'Version':<{col[2]}} {'Description':<{col[3]}} Install path ({current_platform})")
+    print(
+        f"{'Tool':<{col[0]}} {'Repo':<{col[1]}} {'Version':<{col[2]}} {'Description':<{col[3]}} Install path ({current_platform})"
+    )
     print("-" * (sum(col) + 40))
     for name, cfg in tools.items():
         platform_cfg = cfg.get("platforms", {}).get(current_platform, {})
         desc = cfg.get("description", "")
         if len(desc) > col[3] - 3:
-            desc = desc[:col[3] - 3] + "..."
-        
+            desc = desc[: col[3] - 3] + "..."
+
         install_path = platform_cfg.get("install_path", "?")
         binary_names = platform_cfg.get("binary_names", [])
-        
+
         path_str = install_path
         if len(binary_names) > 1:
             install_dir = Path(install_path).parent

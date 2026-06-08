@@ -1,6 +1,7 @@
 import sys
 import tomllib
 from pathlib import Path
+
 import tomli_w
 
 _PROJECT_DIR = Path(__file__).parent

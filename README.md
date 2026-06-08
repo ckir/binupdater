@@ -49,6 +49,34 @@ cd /path/to/binupdater   # or /mnt/c/... from WSL
 uv sync
 ```
 
+### Code Quality (Linting & Formatting)
+
+This project uses [Ruff](https://docs.astral.sh/ruff/) for extremely fast Python linting and formatting. It is installed automatically as a development dependency.
+
+To format code and check for linting errors:
+
+```bash
+uv run ruff format .
+uv run ruff check .
+```
+
+To automatically fix auto-fixable lint errors, run:
+```bash
+uv run ruff check --fix .
+```
+
+### Pre-commit hooks (Lefthook)
+
+This project uses [Lefthook](https://github.com/evilmartians/lefthook) to automatically run Ruff on changed files before every commit.
+
+To set it up locally, first install Lefthook (e.g. via npm: `npm install -g @evilmartians/lefthook` or via your system package manager), then run:
+
+```bash
+lefthook install
+```
+
+This ensures you'll never accidentally commit code that violates the project's formatting or linting rules!
+
 ---
 
 ## Configuration

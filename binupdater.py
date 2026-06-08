@@ -3,6 +3,7 @@
 
 import argparse
 import sys
+
 import cli
 
 
@@ -17,11 +18,21 @@ def main():
     p_add = sub.add_parser("add", help="Add a new tool to track")
     p_add.add_argument("url", help="GitHub repository URL")
     p_add.add_argument("--name", help="Override the tool name (defaults to repo name)")
-    p_add.add_argument("--force", action="store_true", help="Re-add and overwrite existing configuration")
+    p_add.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-add and overwrite existing configuration",
+    )
 
     p_update = sub.add_parser("update", help="Update tracked tools")
-    p_update.add_argument("tools", nargs="*", metavar="TOOL", help="Tools to update (default: all)")
-    p_update.add_argument("--check", action="store_true", help="Report available updates without installing")
+    p_update.add_argument(
+        "tools", nargs="*", metavar="TOOL", help="Tools to update (default: all)"
+    )
+    p_update.add_argument(
+        "--check",
+        action="store_true",
+        help="Report available updates without installing",
+    )
 
     sub.add_parser("list", help="List tracked tools and their versions")
 

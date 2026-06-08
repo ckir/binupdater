@@ -309,3 +309,252 @@ binary_names = [
     "websocat",
 ]
 install_path = "~/.bin/websocat"
+
+[tools.rg]
+repo = "BurntSushi/ripgrep"
+description = "ripgrep recursively searches directories for a regex pattern while respecting your gitignore"
+version_args = [
+    "--version",
+]
+version_regex = "(\\d+\\.\\d+\\.\\d+(?:[.\\-][a-zA-Z0-9]+)*)"
+installed_version = "15.1.0"
+
+[tools.rg.platforms.windows]
+asset_pattern = "ripgrep-*-x86_64-pc-windows-msvc.zip"
+files_in_archive = [
+    "ripgrep-*-x86_64-pc-windows-msvc/rg.exe",
+]
+binary_names = [
+    "rg.exe",
+]
+install_path = "C:\\!PORTABLES\\!BIN\\rg.exe"
+
+[tools.rg.platforms.linux]
+asset_pattern = "ripgrep-*-x86_64-unknown-linux-musl.tar.gz"
+files_in_archive = [
+    "ripgrep-*-x86_64-unknown-linux-musl/rg",
+]
+binary_names = [
+    "rg",
+]
+install_path = "~/.bin/rg"
+
+[tools.bat]
+repo = "sharkdp/bat"
+description = "A cat(1) clone with wings."
+version_args = [
+    "--version",
+]
+version_regex = "(\\d+\\.\\d+\\.\\d+(?:[.\\-][a-zA-Z0-9]+)*)"
+installed_version = "0.26.1"
+
+[tools.bat.platforms.windows]
+asset_pattern = "bat-*-x86_64-pc-windows-msvc.zip"
+files_in_archive = [
+    "bat-*-x86_64-pc-windows-msvc/bat.exe",
+]
+binary_names = [
+    "bat.exe",
+]
+install_path = "C:\\!PORTABLES\\!BIN\\bat.exe"
+
+[tools.bat.platforms.linux]
+asset_pattern = "bat-*-x86_64-unknown-linux-musl.tar.gz"
+files_in_archive = [
+    "bat-*-x86_64-unknown-linux-musl/bat",
+]
+binary_names = [
+    "bat",
+]
+install_path = "~/.bin/bat"
+
+[tools.yazi]
+repo = "sxyazi/yazi"
+description = "💥 Blazing fast terminal file manager written in Rust, based on async I/O."
+version_args = [
+    "--version",
+]
+version_regex = "(\\d+\\.\\d+\\.\\d+(?:[.\\-][a-zA-Z0-9]+)*)"
+installed_version = "26.5.6"
+
+[tools.yazi.platforms.windows]
+asset_pattern = "yazi-x86_64-pc-windows-msvc.zip"
+files_in_archive = [
+    "yazi-x86_64-pc-windows-msvc/yazi.exe",
+    "yazi-x86_64-pc-windows-msvc/ya.exe",
+]
+binary_names = [
+    "yazi.exe",
+    "ya.exe",
+]
+install_path = "C:\\!PORTABLES\\!BIN\\yazi.exe"
+
+[tools.yazi.platforms.linux]
+asset_pattern = "yazi-x86_64-unknown-linux-musl.zip"
+files_in_archive = [
+    "yazi-x86_64-unknown-linux-musl/yazi",
+    "yazi-x86_64-unknown-linux-musl/ya",
+]
+binary_names = [
+    "yazi",
+    "ya",
+]
+install_path = "~/.bin/yazi"
+
+[tools.code2prompt]
+repo = "mufeedvh/code2prompt"
+description = "A CLI tool to convert your codebase into a single LLM prompt with source tree, prompt templating, and token counting."
+version_args = [
+    "--version",
+]
+version_regex = "(\\d+\\.\\d+\\.\\d+(?:[.\\-][a-zA-Z0-9]+)*)"
+installed_version = "4.2.0"
+
+[tools.code2prompt.platforms.windows]
+asset_pattern = "code2prompt-x86_64-pc-windows-msvc.exe"
+binary_names = [
+    "code2prompt.exe",
+]
+install_path = "C:\\!PORTABLES\\!BIN\\code2prompt.exe"
+
+[tools.code2prompt.platforms.linux]
+asset_pattern = "code2prompt-x86_64-unknown-linux-gnu"
+binary_names = [
+    "code2prompt",
+]
+install_path = "~/.bin/code2prompt"
+
+[tools.sd]
+repo = "chmln/sd"
+description = "Intuitive find & replace CLI (sed alternative)"
+version_args = [
+    "--version",
+]
+version_regex = "(\\d+\\.\\d+\\.\\d+(?:[.\\-][a-zA-Z0-9]+)*)"
+installed_version = "1.0.0"
+
+[tools.sd.platforms.windows]
+asset_pattern = "sd-*-x86_64-pc-windows-msvc.zip"
+files_in_archive = [
+    "sd-*-x86_64-pc-windows-msvc/sd.exe",
+]
+binary_names = [
+    "sd.exe",
+]
+install_path = "C:\\!PORTABLES\\!BIN\\sd.exe"
+
+[tools.watchexec]
+repo = "watchexec/watchexec"
+description = "Executes commands in response to file modifications"
+version_args = [
+    "--version",
+]
+version_regex = "(\\d+\\.\\d+\\.\\d+(?:[.\\-][a-zA-Z0-9]+)*)"
+installed_version = "2.5.1"
+
+[tools.watchexec.platforms.windows]
+asset_pattern = "watchexec-*-x86_64-pc-windows-msvc.zip"
+files_in_archive = [
+    "watchexec-*-x86_64-pc-windows-msvc/watchexec.exe",
+]
+binary_names = [
+    "watchexec.exe",
+]
+install_path = "C:\\!PORTABLES\\!BIN\\watchexec.exe"
+
+[tools.watchexec.platforms.linux]
+asset_pattern = "watchexec-*-x86_64-unknown-linux-musl.tar.xz"
+files_in_archive = [
+    "watchexec-*-x86_64-unknown-linux-musl/watchexec",
+]
+binary_names = [
+    "watchexec",
+]
+install_path = "~/.bin/watchexec"
+
+[tools.htmlq]
+repo = "mgdm/htmlq"
+description = "Like jq, but for HTML."
+version_args = [
+    "--version",
+]
+version_regex = "(\\d+\\.\\d+\\.\\d+(?:[.\\-][a-zA-Z0-9]+)*)"
+installed_version = "0.4.0"
+
+[tools.htmlq.platforms.windows]
+asset_pattern = "htmlq-x86_64-windows.zip"
+files_in_archive = [
+    "htmlq.exe",
+]
+binary_names = [
+    "htmlq.exe",
+]
+install_path = "C:\\!PORTABLES\\!BIN\\htmlq.exe"
+
+[tools.htmlq.platforms.linux]
+asset_pattern = "htmlq-x86_64-linux.tar.gz"
+files_in_archive = [
+    "htmlq",
+]
+binary_names = [
+    "htmlq",
+]
+install_path = "~/.bin/htmlq"
+
+[tools.mdcat]
+repo = "swsnr/mdcat"
+description = "cat for markdown"
+version_args = [
+    "--version",
+]
+version_regex = "(\\d+\\.\\d+\\.\\d+(?:[.\\-][a-zA-Z0-9]+)*)"
+installed_version = "2.7.1"
+
+[tools.mdcat.platforms.windows]
+asset_pattern = "*-x86_64-pc-windows-msvc.zip"
+files_in_archive = [
+    "mdcat.exe",
+]
+binary_names = [
+    "mdcat.exe",
+]
+install_path = "C:\\!PORTABLES\\!BIN\\mdcat.exe"
+
+[tools.mdcat.platforms.linux]
+asset_pattern = "*-x86_64-unknown-linux-gnu.tar.gz"
+files_in_archive = [
+    "*-x86_64-unknown-linux-gnu/mdcat",
+]
+binary_names = [
+    "mdcat",
+]
+install_path = "~/.bin/mdcat"
+
+[tools.ruff]
+repo = "astral-sh/ruff"
+description = "An extremely fast Python linter and code formatter, written in Rust."
+version_args = [
+    "--version",
+]
+version_regex = "(\\d+\\.\\d+\\.\\d+(?:[.\\-][a-zA-Z0-9]+)*)"
+installed_version = "0.15.16"
+
+[tools.ruff.platforms.windows]
+asset_pattern = "ruff-x86_64-pc-windows-msvc.zip"
+files_in_archive = [
+    "ruff.exe",
+]
+binary_names = [
+    "ruff.exe",
+]
+install_path = "C:\\!PORTABLES\\!BIN\\ruff.exe"
+
+[tools.ruff.platforms.linux]
+asset_pattern = "ruff-x86_64-unknown-linux-musl.tar.gz"
+files_in_archive = [
+    "ruff-x86_64-unknown-linux-musl/ruff",
+]
+binary_names = [
+    "ruff",
+]
+install_path = "~/.bin/ruff"

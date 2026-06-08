@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+
 import requests
 
 GITHUB_API = "https://api.github.com"
@@ -53,8 +54,9 @@ def download_file(url: str, dest: Path, token: str | None = None) -> None:
                     filled = int(bar_width * pct)
                     bar = "#" * filled + "-" * (bar_width - filled)
                     print(
-                        f"\r  [{bar}] {downloaded/1048576:.1f}/{total/1048576:.1f} MB",
-                        end="", flush=True,
+                        f"\r  [{bar}] {downloaded / 1048576:.1f}/{total / 1048576:.1f} MB",
+                        end="",
+                        flush=True,
                     )
         if total:
             print()
