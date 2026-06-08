@@ -286,3 +286,26 @@ binary_names = [
     "rtk",
 ]
 install_path = "~/.bin/rtk"
+
+[tools.websocat]
+repo = "vi/websocat"
+description = "Command-line client for WebSockets, like netcat (or curl) for ws:// with advanced socat-like functions"
+version_args = [
+    "--version",
+]
+version_regex = "(\\d+\\.\\d+\\.\\d+(?:[.\\-][a-zA-Z0-9]+)*)"
+installed_version = "1.14.1"
+
+[tools.websocat.platforms.windows]
+asset_pattern = "websocat.x86_64-pc-windows-gnu.exe"
+binary_names = [
+    "websocat.exe",
+]
+install_path = "C:\\!PORTABLES\\!BIN\\websocat.exe"
+
+[tools.websocat.platforms.linux]
+asset_pattern = "websocat.x86_64-unknown-linux-musl"
+binary_names = [
+    "websocat",
+]
+install_path = "~/.bin/websocat"
