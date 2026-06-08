@@ -1,0 +1,23 @@
+# .antigravityignore — define exclusions for the Antigravity agent context
+
+# Tier 1 — Secrets & Local Config (Security-critical)
+config.toml
+.env
+.env.*
+*.pem
+*.key
+
+# Tier 2 — Noise (Performance/Cost/Caches)
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.playwright-cli/
+build/
+dist/
+
+# Logs & Temporary Files
+*.log
+*.tmp*
+*.bak

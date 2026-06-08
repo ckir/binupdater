@@ -9,12 +9,12 @@ Keep GitHub-released binaries up to date across Windows and Linux/WSL.
 
 ## Setup
 
-### Using pipx (Recommended)
+### Using uv (Recommended)
 
 To install `binupdater` globally in an isolated environment, you can install it directly from GitHub:
 
 ```bash
-pipx install git+https://github.com/ckir/binupdater.git
+uv tool install git+https://github.com/ckir/binupdater.git
 ```
 
 Alternatively, to install from a local clone of the repository:
@@ -23,23 +23,22 @@ Alternatively, to install from a local clone of the repository:
 # Navigate to the project directory
 cd /path/to/binupdater
 
-# Install locally using pipx
-pipx install .
+# Install locally using uv
+uv tool install .
 ```
 
 This will automatically handle dependencies and make the `binupdater` command available system-wide.
 
-### Manual Virtual Environment Setup
+### Development Setup
+
+To set up a local development environment, `uv sync` will automatically create the virtual environment and install all dependencies:
 
 #### Windows
 
 ```powershell
 cd C:\path\to\binupdater
 
-python -m venv .venv
-.venv\Scripts\activate
-
-pip install -r requirements.txt
+uv sync
 ```
 
 #### Linux / WSL
@@ -47,14 +46,8 @@ pip install -r requirements.txt
 ```bash
 cd /path/to/binupdater   # or /mnt/c/... from WSL
 
-python3 -m venv .venv
-source .venv/bin/activate
-
-pip install -r requirements.txt
+uv sync
 ```
-
-> In WSL you may need to install the venv package first:
-> `sudo apt install python3.XX-venv`
 
 ---
 
@@ -124,16 +117,25 @@ Removes the tool from tracking only. The binary on disk is not deleted.
 
 ---
 
-## Running from Windows (updates Linux/WSL binaries)
+## Running from Windows (native)
 
-Use the provided batch file to run binupdater under WSL without opening a WSL terminal:
+Use the provided batch file to run binupdater natively on Windows:
 
 ```
 binupdater.bat update
 binupdater.bat list
 ```
 
-The batch file automatically sets the working directory so `config.toml` is always found correctly.
+The batch file automatically detects your `.venv` (if present) and runs python, setting the working directory so `config.toml` is always found correctly.
+
+## Running from Windows (updates Linux/WSL binaries)
+
+Use the WSL batch file to run binupdater under WSL without opening a WSL terminal:
+
+```
+binupdater-wsl.bat update
+binupdater-wsl.bat list
+```
 
 ## Running from Linux / WSL (global access)
 

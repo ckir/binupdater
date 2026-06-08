@@ -1,3 +1,0 @@
-requests>=2.28
-packaging>=23
-tomli-w>=1.0
