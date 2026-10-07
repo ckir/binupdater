@@ -37,7 +37,8 @@ def _choose_multi(prompt: str, options: list[str]) -> list[int]:
         print(f"  {i:3}. {opt}")
     print(f"  {prompt}")
     print(
-        "  Enter numbers or ranges (e.g. 1-5,7,18-20) — first selection is the main binary."
+        "  Enter numbers or ranges (e.g. 1-5,7,18-20)"
+        " — first selection is the main binary."
     )
     while True:
         raw = input("  > ").strip()
@@ -70,7 +71,8 @@ def _choose_multi(prompt: str, options: list[str]) -> list[int]:
                                 indices.append(idx)
                     else:
                         print(
-                            f"  Invalid range: '{p}'. Enter numbers between 1 and {len(options)}."
+                            f"  Invalid range: '{p}'."
+                            f" Enter numbers between 1 and {len(options)}."
                         )
                         ok = False
                         break
@@ -145,7 +147,9 @@ def cmd_add(args):
 
     if tool_name in cfg_data.get("tools", {}) and not getattr(args, "force", False):
         print(
-            f"'{tool_name}' is already tracked. Use 'update {tool_name}' to update it, or --force to reconfigure."
+            f"'{tool_name}' is already tracked."
+            f" Use 'update {tool_name}' to update it,"
+            " or --force to reconfigure."
         )
         sys.exit(1)
 
@@ -332,8 +336,10 @@ def cmd_add(args):
             missing = [p for p in current_install_paths if not Path(p).exists()]
 
             if missing:
+                missing_names = ", ".join(Path(p).name for p in missing)
                 print(
-                    f"\nSome files are missing from their target locations: {', '.join(Path(p).name for p in missing)}"
+                    "\nSome files are missing from their target locations: "
+                    f"{missing_names}"
                 )
                 ans = (
                     input(f"Install all {len(current_extracted)} files now? [Y/n]: ")
@@ -343,7 +349,8 @@ def cmd_add(args):
             else:
                 ans = (
                     input(
-                        f"\nAll files already exist. Reinstall/Overwrite all {len(current_extracted)} files? [y/N]: "
+                        "\nAll files already exist. Reinstall/Overwrite all "
+                        f"{len(current_extracted)} files? [y/N]: "
                     )
                     .strip()
                     .lower()
@@ -402,7 +409,8 @@ def cmd_add(args):
         if detected_version:
             flags = " ".join(version_args or [])
             print(
-                f"Detected version: {detected_version}  (via '{current_install_path} {flags}')"
+                f"Detected version: {detected_version} "
+                f" (via '{current_install_path} {flags}')"
             )
         else:
             print("Could not auto-detect version.")
@@ -522,7 +530,8 @@ def cmd_list(args):
     current_platform = config.get_platform()
     col = [15, 25, 12, 40]
     print(
-        f"{'Tool':<{col[0]}} {'Repo':<{col[1]}} {'Version':<{col[2]}} {'Description':<{col[3]}} Install path ({current_platform})"
+        f"{'Tool':<{col[0]}} {'Repo':<{col[1]}} {'Version':<{col[2]}} "
+        f"{'Description':<{col[3]}} Install path ({current_platform})"
     )
     print("-" * (sum(col) + 40))
     for name, cfg in tools.items():

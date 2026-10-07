@@ -53,8 +53,9 @@ def download_file(url: str, dest: Path, token: str | None = None) -> None:
                     pct = downloaded / total
                     filled = int(bar_width * pct)
                     bar = "#" * filled + "-" * (bar_width - filled)
+                    progress = f"{downloaded / 1048576:.1f}/{total / 1048576:.1f} MB"
                     print(
-                        f"\r  [{bar}] {downloaded / 1048576:.1f}/{total / 1048576:.1f} MB",
+                        f"\r  [{bar}] {progress}",
                         end="",
                         flush=True,
                     )
