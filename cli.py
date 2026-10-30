@@ -17,7 +17,9 @@ def _prompt(label: str, default: str | None = None) -> str:
     return val if val else (default or "")
 
 
-def _choose(prompt: str, options: list[str], hint_substr: str | None = None) -> int:
+def _choose_multi(
+    prompt: str, options: list[str], hint_substr: str | None = None
+) -> list[int]:
     for i, opt in enumerate(options, 1):
         tag = (
             "  <-- detected"
@@ -25,20 +27,10 @@ def _choose(prompt: str, options: list[str], hint_substr: str | None = None) -> 
             else ""
         )
         print(f"  {i:3}. {opt}{tag}")
-    while True:
-        raw = input(f"{prompt} (1-{len(options)}): ").strip()
-        if raw.isdigit() and 1 <= int(raw) <= len(options):
-            return int(raw) - 1
-        print(f"  Enter a number between 1 and {len(options)}.")
-
-
-def _choose_multi(prompt: str, options: list[str]) -> list[int]:
-    for i, opt in enumerate(options, 1):
-        print(f"  {i:3}. {opt}")
     print(f"  {prompt}")
     print(
-        "  Enter numbers or ranges (e.g. 1-5,7,18-20)"
-        " — first selection is the main binary."
+        "  Enter numbers or ranges (e.g. 1-5,7,18-20) — "
+        "first selection is the primary one."
     )
     while True:
         raw = input("  > ").strip()
@@ -119,6 +111,16 @@ def _make_pattern(name: str, tag: str) -> str:
     return name
 
 
+def _platform_binary_names(platform_cfg: dict) -> list[str]:
+    assets = platform_cfg.get("assets")
+    if assets:
+        names: list[str] = []
+        for asset in assets:
+            names.extend(asset.get("binary_names") or [])
+        return names
+    return platform_cfg.get("binary_names") or []
+
+
 def _resolve_install_path(tool_name: str, platform_cfg: dict) -> bool:
     install_path = platform_cfg.get("install_path", "")
     found = shutil.which(tool_name)
@@ -189,25 +191,29 @@ def cmd_add(args):
     current_platform = config.get_platform()
 
     print("Available assets:")
-    cur_idx = _choose(
-        f"Select asset for {current_platform} (current platform)",
+    indices = _choose_multi(
+        f"Select asset(s) for {current_platform} (current platform)",
         asset_names,
         current_platform,
     )
-    selected_assets: dict[str, dict] = {current_platform: assets[cur_idx]}
-    print(f"  -> {assets[cur_idx]['name']}\n")
+    selected_assets: dict[str, list[dict]] = {
+        current_platform: [assets[i] for i in indices]
+    }
+    print(f"  -> {', '.join(asset_names[i] for i in indices)}\n")
 
     other_platform = "linux" if current_platform == "windows" else "windows"
     if input(f"Configure {other_platform} asset too? [y/N]: ").strip().lower() == "y":
         print(f"\nAvailable assets (for {other_platform}):")
-        other_idx = _choose(
-            f"Select asset for {other_platform}", asset_names, other_platform
+        indices = _choose_multi(
+            f"Select asset(s) for {other_platform}", asset_names, other_platform
         )
-        selected_assets[other_platform] = assets[other_idx]
-        print(f"  -> {assets[other_idx]['name']}\n")
+        selected_assets[other_platform] = [assets[i] for i in indices]
+        print(f"  -> {', '.join(asset_names[i] for i in indices)}\n")
 
     platforms_config: dict[str, dict] = {}
     current_extracted: list[Path] = []
+    current_binary_names: list[str] = []
+    current_install_paths: list[str] = []
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
@@ -216,84 +222,100 @@ def cmd_add(args):
         win_dir = default_install.get("windows", "C:\\!PORTABLES\\!BIN")
         linux_dir = default_install.get("linux", "~/.bin").rstrip("/")
 
-        for platform, asset in selected_assets.items():
+        for platform, platform_assets in selected_assets.items():
             print(f"\n--- {platform} ---")
-            print(f"Downloading {asset['name']}...")
-            archive_path = tmp / asset["name"]
-            try:
-                github_api.download_file(
-                    asset["browser_download_url"], archive_path, token
-                )
-            except Exception as e:
-                print(f"Error downloading: {e}")
-                sys.exit(1)
+            asset_specs: list[dict] = []
+            platform_binary_names: list[str] = []
+            platform_extracted: list[Path] = []
 
-            asset_pattern = _make_pattern(asset["name"], tag)
-            binary_names = []
-
-            if archive.is_archive(archive_path):
-                contents = archive.list_archive(archive_path)
-                print("Archive contents:")
-                indices = _choose_multi(
-                    f"Select files to extract for {tool_name}", contents
-                )
-                chosen_files = [contents[i] for i in indices]
-
-                for i, f in enumerate(chosen_files):
-                    archive_name = Path(f).name
-                    prompt_label = (
-                        "Install as name" if i == 0 else f"Install '{archive_name}' as"
+            for asset_index, asset in enumerate(platform_assets):
+                print(f"Downloading {asset['name']}...")
+                archive_path = tmp / f"{platform}_{asset_index}_{asset['name']}"
+                try:
+                    github_api.download_file(
+                        asset["browser_download_url"], archive_path, token
                     )
-                    new_name = _prompt(prompt_label, archive_name)
-                    binary_names.append(new_name)
+                except Exception as e:
+                    print(f"Error downloading: {e}")
+                    sys.exit(1)
 
-                file_patterns = [_make_pattern(f, tag) for f in chosen_files]
-                print(f"  Main binary: {file_patterns[0]}")
-                for extra in file_patterns[1:]:
-                    print(f"  Extra file:  {extra}")
+                spec: dict = {"asset_pattern": _make_pattern(asset["name"], tag)}
 
-                platforms_config[platform] = {
-                    "asset_pattern": asset_pattern,
-                    "files_in_archive": file_patterns,
-                    "binary_names": binary_names,
-                }
-                if platform == current_platform:
-                    if not args.name:
-                        tool_name = Path(binary_names[0]).stem
-                    for i, pattern in enumerate(file_patterns):
-                        member = archive.find_in_archive(archive_path, pattern)
-                        if member:
-                            dest = tmp / binary_names[i]
+                if archive.is_archive(archive_path):
+                    contents = archive.list_archive(archive_path)
+                    print(f"Archive contents ({asset['name']}):")
+                    indices = _choose_multi(
+                        f"Select files to extract for {tool_name}", contents
+                    )
+                    chosen_files = [contents[i] for i in indices]
+                    file_patterns = [_make_pattern(f, tag) for f in chosen_files]
+                    binary_names = []
+
+                    for i, f in enumerate(chosen_files):
+                        archive_name = Path(f).name
+                        prompt_label = (
+                            "Install as name"
+                            if i == 0
+                            else f"Install '{archive_name}' as"
+                        )
+                        new_name = _prompt(prompt_label, archive_name)
+                        binary_names.append(new_name)
+
+                    spec["files_in_archive"] = file_patterns
+                    spec["binary_names"] = binary_names
+                    platform_binary_names.extend(binary_names)
+
+                    print(f"  Main binary: {file_patterns[0]}")
+                    for extra in file_patterns[1:]:
+                        print(f"  Extra file:  {extra}")
+
+                    if platform == current_platform:
+                        for i, pattern in enumerate(file_patterns):
+                            member = archive.find_in_archive(archive_path, pattern)
+                            if not member:
+                                print(
+                                    f"Error: no file matching '{pattern}' "
+                                    f"in {asset['name']}"
+                                )
+                                sys.exit(1)
+                            dest = (
+                                tmp
+                                / "extracted"
+                                / platform
+                                / str(asset_index)
+                                / binary_names[i]
+                            )
                             try:
                                 archive.extract_file(archive_path, member, dest)
-                                current_extracted.append(dest)
-                            except Exception:
-                                pass
-            else:
-                archive_name = asset["name"]
-                new_name = _prompt("Install as name", archive_name)
-                binary_names = [new_name]
-                platforms_config[platform] = {
-                    "asset_pattern": asset_pattern,
-                    "binary_names": binary_names,
-                }
-                if platform == current_platform:
-                    if not args.name:
-                        tool_name = Path(new_name).stem
-                    current_extracted.append(archive_path)
+                            except Exception as e:
+                                print(f"Error extracting {pattern}: {e}")
+                                sys.exit(1)
+                            platform_extracted.append(dest)
+                else:
+                    archive_name = asset["name"]
+                    new_name = _prompt("Install as name", archive_name)
+                    spec["binary_names"] = [new_name]
+                    platform_binary_names.append(new_name)
+                    if platform == current_platform:
+                        platform_extracted.append(archive_path)
 
-            print()
+                asset_specs.append(spec)
+                print()
+
+            if platform == current_platform and not args.name:
+                tool_name = Path(platform_binary_names[0]).stem
+
             install_defaults = {
                 "windows": str(Path(win_dir) / f"{tool_name}.exe"),
                 "linux": f"{linux_dir}/{tool_name}",
             }
             if platform == current_platform:
-                found = shutil.which(binary_names[0])
+                found = shutil.which(platform_binary_names[0])
                 if found:
-                    print(f"Found existing '{binary_names[0]}': {found}")
+                    print(f"Found existing '{platform_binary_names[0]}': {found}")
                     install_path = _prompt("Installation path", found)
                 else:
-                    print(f"'{binary_names[0]}' not found in PATH.")
+                    print(f"'{platform_binary_names[0]}' not found in PATH.")
                     install_path = _prompt(
                         "Installation path",
                         install_defaults.get(platform, f"/usr/local/bin/{tool_name}"),
@@ -303,13 +325,16 @@ def cmd_add(args):
                     f"Default install path for {platform}",
                     install_defaults.get(platform, f"/usr/local/bin/{tool_name}"),
                 )
-            platforms_config[platform]["install_path"] = install_path
+            platforms_config[platform] = {
+                "assets": asset_specs,
+                "install_path": install_path,
+            }
 
             # Additional binaries
             if platform == current_platform:
                 all_install_paths = [install_path]
                 install_dir = Path(install_path).parent
-                for extra_name in binary_names[1:]:
+                for extra_name in platform_binary_names[1:]:
                     found_extra = shutil.which(extra_name)
                     if found_extra:
                         print(f"Found existing '{extra_name}': {found_extra}")
@@ -323,14 +348,14 @@ def cmd_add(args):
                         )
                     all_install_paths.append(extra_path)
                 current_install_paths = all_install_paths
-            else:
-                pass
+                current_binary_names = platform_binary_names
+                current_extracted = platform_extracted
 
         if current_extracted:
             main_dest = Path(current_install_paths[0])
             print(f"\nTarget installation for '{tool_name}':")
             for i, p in enumerate(current_install_paths):
-                print(f"  {binary_names[i]:<20} -> {p}")
+                print(f"  {current_binary_names[i]:<20} -> {p}")
 
             # Check which files are missing
             missing = [p for p in current_install_paths if not Path(p).exists()]
@@ -541,7 +566,7 @@ def cmd_list(args):
             desc = desc[: col[3] - 3] + "..."
 
         install_path = platform_cfg.get("install_path", "?")
-        binary_names = platform_cfg.get("binary_names", [])
+        binary_names = _platform_binary_names(platform_cfg)
 
         path_str = install_path
         if len(binary_names) > 1:

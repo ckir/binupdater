@@ -43,11 +43,17 @@ def replace_binary(src: Path, dest: Path) -> None:
             dest.rename(backup)
         try:
             shutil.copy2(src, dest)
-            backup.unlink(missing_ok=True)
         except Exception:
             if backup.exists() and not dest.exists():
                 backup.rename(dest)
             raise
+
+        try:
+            backup.unlink(missing_ok=True)
+        except OSError:
+            # The new binary is already in place; a transiently locked backup
+            # can be removed on the next run instead of failing the update.
+            pass
     else:
         tmp = dest.with_name(dest.name + ".tmp_binupdater")
         shutil.copy2(src, tmp)
@@ -113,6 +119,60 @@ def _find_asset(release: dict, pattern: str) -> dict | None:
     return None
 
 
+def _asset_specs(platform_cfg: dict) -> list[dict]:
+    """Normalize the old single-asset config and the new assets list."""
+    assets = platform_cfg.get("assets")
+    if assets:
+        specs = []
+        for asset in assets:
+            legacy = asset.get("binary_in_archive")
+            files = asset.get("files_in_archive") or ([legacy] if legacy else [])
+            specs.append(
+                {
+                    "asset_pattern": asset["asset_pattern"],
+                    "files_in_archive": files,
+                    "binary_names": asset.get("binary_names") or [],
+                }
+            )
+        return specs
+
+    pattern = platform_cfg.get("asset_pattern")
+    if not pattern:
+        return []
+    legacy = platform_cfg.get("binary_in_archive")
+    files = platform_cfg.get("files_in_archive") or ([legacy] if legacy else [])
+    return [
+        {
+            "asset_pattern": pattern,
+            "files_in_archive": files,
+            "binary_names": platform_cfg.get("binary_names") or [],
+        }
+    ]
+
+
+def _expected_install_paths(
+    platform_cfg: dict, release: dict, binary_path: Path
+) -> list[Path]:
+    """Return every destination the config says should exist after an update."""
+    install_dir = binary_path.parent
+    expected = [binary_path]
+
+    for index, spec in enumerate(_asset_specs(platform_cfg)):
+        names = spec["binary_names"]
+        if not names:
+            if spec["files_in_archive"]:
+                # Extracted file names are unknown without downloading.
+                continue
+            asset = _find_asset(release, spec["asset_pattern"])
+            names = [asset["name"]] if asset else []
+
+        if index == 0:
+            names = names[1:]
+        expected.extend(install_dir / name for name in names)
+
+    return expected
+
+
 def check_tool(
     tool_name: str, tool_config: dict, token: str | None = None
 ) -> UpdateResult:
@@ -168,7 +228,14 @@ def update_tool(
     latest_tag = release["tag_name"]
     latest_ver = normalize_version(latest_tag)
 
-    if binary_exists and not version_newer(latest_tag, installed):
+    expected_paths = _expected_install_paths(platform_cfg, release, binary_path)
+    missing_expected = any(not path.exists() for path in expected_paths)
+
+    if (
+        binary_exists
+        and not missing_expected
+        and not version_newer(latest_tag, installed)
+    ):
         return UpdateResult(
             tool_name, "up_to_date", old_version=installed, new_version=latest_ver
         )
@@ -177,63 +244,103 @@ def update_tool(
             tool_name, "update_available", old_version=installed, new_version=latest_ver
         )
 
-    asset = _find_asset(release, platform_cfg["asset_pattern"])
-    if not asset:
-        return UpdateResult(
-            tool_name,
-            "error",
-            error=f"No asset matching '{platform_cfg['asset_pattern']}' "
-            f"in release {latest_tag}",
-        )
+    specs = _asset_specs(platform_cfg)
+    if not specs:
+        return UpdateResult(tool_name, "error", error="No asset configured")
+
+    resolved: list[tuple[dict, dict]] = []
+    for spec in specs:
+        asset = _find_asset(release, spec["asset_pattern"])
+        if not asset:
+            return UpdateResult(
+                tool_name,
+                "error",
+                error=f"No asset matching '{spec['asset_pattern']}' "
+                f"in release {latest_tag}",
+            )
+        resolved.append((spec, asset))
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp = Path(tmpdir)
-        archive_path = tmp / asset["name"]
-        print(f"  Downloading {asset['name']}...")
-        try:
-            github_api.download_file(asset["browser_download_url"], archive_path, token)
-        except Exception as e:
-            return UpdateResult(tool_name, "error", error=f"Download failed: {e}")
+        extracted_files: list[Path] = []
 
-        if archive.is_archive(archive_path):
-            file_patterns = platform_cfg.get("files_in_archive") or []
-            binary_names = platform_cfg.get("binary_names") or []
-            if not file_patterns:
-                legacy = platform_cfg.get("binary_in_archive")
-                file_patterns = [legacy] if legacy else []
-            if not file_patterns:
+        for index, (spec, asset) in enumerate(resolved):
+            archive_path = tmp / f"{index}_{asset['name']}"
+            print(f"  Downloading {asset['name']}...")
+            try:
+                github_api.download_file(
+                    asset["browser_download_url"], archive_path, token
+                )
+            except Exception as e:
                 return UpdateResult(
-                    tool_name, "error", error="No files configured for extraction"
+                    tool_name,
+                    "error",
+                    error=f"Download failed for {asset['name']}: {e}",
                 )
 
-            extracted_files: list[Path] = []
-            for i, pattern in enumerate(file_patterns):
-                member = archive.find_in_archive(archive_path, pattern)
-                if not member:
+            if archive.is_archive(archive_path):
+                file_patterns = spec["files_in_archive"]
+                binary_names = spec["binary_names"]
+                if not file_patterns:
                     return UpdateResult(
                         tool_name,
                         "error",
-                        error=f"No file matching '{pattern}' in archive",
+                        error=(
+                            f"No files configured for extraction from {asset['name']}"
+                        ),
                     )
 
-                dest_name = (
-                    binary_names[i] if i < len(binary_names) else Path(member).name
-                )
-                dest = tmp / dest_name
-                try:
-                    archive.extract_file(archive_path, member, dest)
-                    extracted_files.append(dest)
-                except Exception as e:
-                    return UpdateResult(
-                        tool_name, "error", error=f"Extraction failed: {e}"
+                for i, pattern in enumerate(file_patterns):
+                    member = archive.find_in_archive(archive_path, pattern)
+                    if not member:
+                        return UpdateResult(
+                            tool_name,
+                            "error",
+                            error=f"No file matching '{pattern}' in {asset['name']}",
+                        )
+
+                    dest_name = (
+                        binary_names[i] if i < len(binary_names) else Path(member).name
                     )
-            extracted, extra_files = extracted_files[0], extracted_files[1:]
-        else:
-            extracted, extra_files = archive_path, []
+                    dest = tmp / "extracted" / str(index) / dest_name
+                    try:
+                        archive.extract_file(archive_path, member, dest)
+                    except Exception as e:
+                        return UpdateResult(
+                            tool_name,
+                            "error",
+                            error=f"Extraction failed for {asset['name']}: {e}",
+                        )
+                    extracted_files.append(dest)
+            else:
+                dest_name = (
+                    spec["binary_names"][0] if spec["binary_names"] else asset["name"]
+                )
+                dest = tmp / "extracted" / str(index) / dest_name
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(archive_path, dest)
+                extracted_files.append(dest)
 
         install_dir = binary_path.parent
-        binaries_to_install = [(extracted, binary_path)]
-        for extra in extra_files:
+        destinations = [binary_path] + [
+            install_dir / extracted.name for extracted in extracted_files[1:]
+        ]
+        seen: set[str] = set()
+        duplicates: set[str] = set()
+        for dest in destinations:
+            key = str(dest).casefold() if sys.platform == "win32" else str(dest)
+            if key in seen:
+                duplicates.add(dest.name)
+            seen.add(key)
+        if duplicates:
+            return UpdateResult(
+                tool_name,
+                "error",
+                error="Duplicate install destination: " + ", ".join(sorted(duplicates)),
+            )
+
+        binaries_to_install = [(extracted_files[0], binary_path)]
+        for extra in extracted_files[1:]:
             binaries_to_install.append((extra, install_dir / extra.name))
 
         failed_binaries = []

@@ -109,9 +109,9 @@ python binupdater.py add https://github.com/sharkdp/fd
 
 Walk-through:
 1. Fetches the latest GitHub release and lists all assets
-2. You select the asset for the current platform
+2. You select one or more assets for the current platform
 3. Optionally configure the other platform (Windows ↔ Linux) — each is downloaded and inspected
-4. For each archive you pick which file(s) to extract (first = main binary, extras go to the same directory)
+4. For each archive you pick which file(s) to extract (first file of the first asset = main binary; extras go to the same directory)
 5. Confirm or change the install path (defaults from `config.toml`)
 6. Version is auto-detected from the installed binary
 
@@ -231,3 +231,29 @@ asset_pattern = "fd-*-x86_64-unknown-linux-musl.tar.gz"
 files_in_archive = ["fd-*/fd"]
 install_path = "~/.bin/fd"
 ```
+
+### Multiple archives from one release
+
+If a release publishes several archives, list one `[[...assets]]` block per
+archive. The first file of the first asset installs to `install_path`; every
+other file installs next to it using its `binary_names` entry. If any expected
+file is missing on disk, the next update reinstalls the complete set even when
+the main binary is already current.
+
+```toml
+[tools.foo.platforms.windows]
+install_path = "C:\\tools\\foo.exe"
+
+[[tools.foo.platforms.windows.assets]]
+asset_pattern = "foo-*-x86_64-pc-windows-msvc.zip"
+files_in_archive = ["foo.exe"]      # first entry = main binary
+binary_names = ["foo.exe"]
+
+[[tools.foo.platforms.windows.assets]]
+asset_pattern = "foo-extras-*.zip"
+files_in_archive = ["helper.exe"]
+binary_names = ["helper.exe"]
+```
+
+The older single-asset keys (`asset_pattern`, `files_in_archive`,
+`binary_names` directly under the platform table) still work unchanged.
